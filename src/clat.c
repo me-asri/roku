@@ -10,6 +10,7 @@
 #include "icmp.h"
 #include "checksum.h"
 #include "addr.h"
+#include "log.h"
 
 static int clat_packet_4to6(struct iphdr *ip_header, char *payload, int payload_length)
 {
@@ -77,6 +78,7 @@ static int clat_packet_4to6(struct iphdr *ip_header, char *payload, int payload_
 
             if (writev(roku_cfg.tunfd, iov, 3) < 0)
             {
+                log_error("Failed to write packet");
                 return -1;
             }
 
@@ -90,6 +92,7 @@ static int clat_packet_4to6(struct iphdr *ip_header, char *payload, int payload_
 
         if (writev(roku_cfg.tunfd, iov, 2) < 0)
         {
+            log_error("Failed to write packet");
             return -1;
         }
     }
@@ -185,6 +188,7 @@ static int clat_packet_6to4(struct ip6_hdr *ip6_header, struct ip6_frag *ip6_fra
 
     if (writev(roku_cfg.tunfd, iov, 2) < 0)
     {
+        log_error("Failed to write packet");
         return -1;
     }
 

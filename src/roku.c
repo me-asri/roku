@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
+#include "log.h"
 #include "tun.h"
 #include "clat.h"
 #include "addr.h"
@@ -29,8 +30,8 @@ static const char GUIDE_TEXT[] =
     "  -m mtu    : MTU [" STR(DEFAULT_MTU) "]\n"
     "  -r        : Add default route\n"
     "  -h        : Display this message";
-static const char BADIP_TEXT[] = "'%s' is not a valid IPv4 address.\n";
-static const char BADPREFIX_TEXT[] = "'%s' is not a valid IPv6 /96 prefix.\n";
+static const char BADIP_FMT_TEXT[] = "'%s' is not a valid IPv4 address.";
+static const char BADPREFIX_FMT_TEXT[] = "'%s' is not a valid IPv6 /96 prefix.";
 
 void init(char *gateway, char *ip, char *ip6_prefix, char *nat64_prefix, char *ifname, int mtu);
 int create_tun();
@@ -114,28 +115,23 @@ int main(int argc, char **argv)
 
         size = read(roku_cfg.tunfd, in_packet, sizeof(in_packet));
         if (size < 0)
-        {
-            perror("Failed to read from TUN");
-            break;
-        }
+            die("Failed to read from TUN device");
 
         ver = in_packet[0] >> 4;
 
         if (ver == 4)
         {
             if (clat_4to6(in_packet, size) < 0)
-            {
-                perror("Fatal error occured while translating IPv4 packet");
-                break;
-            }
+                die("Fatal error occured while translating IPv4 packet");
         }
         else if (ver == 6)
         {
             if (clat_6to4(in_packet, size) < 0)
-            {
-                perror("Fatal error occured while translating IPv6 packet");
-                break;
-            }
+                die("Fatal error occured while translating IPv6 packet");
+        }
+        else
+        {
+            log_warn("Dropping IP packet version %d", ver);
         }
     }
 
@@ -146,23 +142,19 @@ void init(char *gateway, char *ip, char *ip6_prefix, char *nat64_prefix, char *i
 {
     if (!inet_pton(AF_INET, gateway, &roku_cfg.gateway))
     {
-        fprintf(stderr, BADIP_TEXT, gateway);
-        exit(EXIT_FAILURE);
+        die(BADIP_FMT_TEXT, gateway);
     }
     if (!inet_pton(AF_INET, ip, &roku_cfg.ip))
     {
-        fprintf(stderr, BADIP_TEXT, ip);
-        exit(EXIT_FAILURE);
+        die(BADIP_FMT_TEXT, ip);
     }
     if (!inet_pton(AF_INET6, ip6_prefix, &roku_cfg.src_prefix) || !ADDR_VALID_PREFIX(roku_cfg.src_prefix))
     {
-        fprintf(stderr, BADPREFIX_TEXT, ip6_prefix);
-        exit(EXIT_FAILURE);
+        die(BADPREFIX_FMT_TEXT, ip6_prefix);
     }
     if (!inet_pton(AF_INET6, nat64_prefix, &roku_cfg.dst_prefix) || !ADDR_VALID_PREFIX(roku_cfg.dst_prefix))
     {
-        fprintf(stderr, BADPREFIX_TEXT, nat64_prefix);
-        exit(EXIT_FAILURE);
+        die(BADPREFIX_FMT_TEXT, nat64_prefix);
     }
 
     roku_cfg.gateway6 = roku_cfg.src_prefix;
@@ -175,13 +167,14 @@ void init(char *gateway, char *ip, char *ip6_prefix, char *nat64_prefix, char *i
 
     roku_cfg.tunfd = create_tun();
     if (roku_cfg.tunfd < 0)
-    {
-        perror("TUN creation failed");
-        exit(EXIT_FAILURE);
-    }
+        die("TUN creation failed. Not enough privileges?");
 
-    printf("Interface: %s\nMTU: %d\nIPv4: %s\nGateway: %s\nCLAT prefix: %s\nNAT64 prefix: %s\n",
-           roku_cfg.ifname, roku_cfg.mtu, ip, gateway, ip6_prefix, nat64_prefix);
+    log_info("Interface: %s", roku_cfg.ifname);
+    log_info("MTU: %d", roku_cfg.mtu);
+    log_info("IPv4: %s", ip);
+    log_info("Gateway: %s", gateway);
+    log_info("Client IPv6 prefix: %s", ip6_prefix);
+    log_info("NAT64 prefix: %s", nat64_prefix);
 
     signal(SIGINT, handle_signal);
     signal(SIGTERM, handle_signal);
@@ -192,12 +185,16 @@ int create_tun()
     int ioctl_fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (ioctl_fd < 0)
     {
+        log_error("Failed to create AF_INET socket");
+
         return -1;
     }
 
     int ioctl6_fd = socket(AF_INET6, SOCK_DGRAM, 0);
     if (ioctl6_fd < 0)
     {
+        log_error("Failed to create AF_INET6 socket");
+
         close(ioctl_fd);
         return -1;
     }
@@ -205,6 +202,8 @@ int create_tun()
     int tunfd = tun_new(roku_cfg.ifname);
     if (tunfd < 0)
     {
+        log_error("Failed to create new TUN interface");
+
         close(ioctl_fd);
         close(ioctl6_fd);
         return -1;
@@ -216,6 +215,8 @@ int create_tun()
         !tun_set_mtu(ioctl_fd, roku_cfg.ifname, roku_cfg.mtu) ||
         !tun_up(ioctl_fd, roku_cfg.ifname))
     {
+        log_error("Failed to configure TUN interface");
+
         close(tunfd);
         close(ioctl_fd);
         close(ioctl6_fd);
@@ -227,7 +228,7 @@ int create_tun()
         tun_set_route(roku_cfg.ifname, roku_cfg.gateway, ROUTE_METRIC, ROUTE_MTU, &roku_cfg.route);
         if (!tun_add_route(ioctl_fd, &roku_cfg.route))
         {
-            perror("Failed to add route");
+            log_warn("Failed to add route");
             roku_cfg.add_route = false;
         }
     }
@@ -239,13 +240,13 @@ int create_tun()
 
 void handle_signal(int signum)
 {
-    puts("Shutting down.");
+    log_info("Shutting down.");
     if (roku_cfg.add_route)
     {
         int ioctl_fd = socket(AF_INET, SOCK_DGRAM, 0);
         if (ioctl_fd < 0 || !tun_del_route(ioctl_fd, &roku_cfg.route))
         {
-            perror("Failed to remove route");
+            log_warn("Failed to remove route");
         }
         close(ioctl_fd);
     }

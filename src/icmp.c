@@ -5,6 +5,7 @@
 #include "roku.h"
 #include "checksum.h"
 #include "xlat.h"
+#include "log.h"
 
 // Estimate MTU using the algorithm from RFC 1191.
 static int estimate_mtu(int packet_length)
@@ -67,6 +68,7 @@ int icmp_send_error(int type, int code, in_addr_t src, in_addr_t dst, char *payl
 
     if (writev(roku_cfg.tunfd, iov, 2) < 0)
     {
+        log_error("Failed to write packet");
         return -1;
     }
     return 1;
@@ -113,6 +115,7 @@ int icmp6_send_error(int type, int code, struct in6_addr *src, struct in6_addr *
 
     if (writev(roku_cfg.tunfd, iov, 2) < 0)
     {
+        log_error("Failed to write packet");
         return -1;
     }
     return 1;
@@ -202,6 +205,7 @@ static int icmp_error_4to6(struct iphdr *ip_header, struct icmphdr *icmp_header,
             return 0;
         case ICMP_PARAMPROB_PTRERR:
         case ICMP_PARAMPROB_BADLEN:
+            log_warn("ICMP type not implemented");
             // TODO
         default:
             return 0;
@@ -240,6 +244,7 @@ static int icmp_error_4to6(struct iphdr *ip_header, struct icmphdr *icmp_header,
 
     if (writev(roku_cfg.tunfd, iov, 2) < 0)
     {
+        log_error("Failed to write packet");
         return -1;
     }
     return 0;
@@ -376,6 +381,7 @@ static int icmp_error_6to4(struct ip6_hdr *ip6_header, struct icmp6_hdr *icmp6_h
         case ICMP6_PARAMPROB_OPTION:
             return 0;
         case ICMP6_PARAMPROB_HEADER:
+            log_warn("ICMPv6 type not implemented");
             // TODO
         default:
             return 0;
@@ -422,6 +428,7 @@ static int icmp_error_6to4(struct ip6_hdr *ip6_header, struct icmp6_hdr *icmp6_h
 
     if (writev(roku_cfg.tunfd, iov, 2) < 0)
     {
+        log_error("Failed to write packet");
         return -1;
     }
     return 1;
@@ -467,6 +474,7 @@ static int icmp_info_6to4(struct ip6_hdr *ip6_header, struct icmp6_hdr *icmp6_he
 
     if (writev(roku_cfg.tunfd, iov, 2) < 0)
     {
+        log_error("Failed to write packet");
         return -1;
     }
     return 1;
