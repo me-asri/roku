@@ -1,9 +1,12 @@
 #include "clat.h"
 
 #include <stdbool.h>
-#include <sys/uio.h>
+
+#include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
+
+#include <sys/uio.h>
 
 #include "roku.h"
 #include "xlat.h"

@@ -1,5 +1,5 @@
-#ifndef LOG_H
-#define LOG_H
+#ifndef ROKU_LOG_H
+#define ROKU_LOG_H
 
 typedef enum
 {

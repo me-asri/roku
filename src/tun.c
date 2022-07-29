@@ -1,12 +1,18 @@
 #include "tun.h"
 
+#include <stdbool.h>
+#include <string.h>
+
 #include <fcntl.h>
 #include <unistd.h>
-#include <string.h>
+#include <sys/ioctl.h>
+
 #include <net/if.h>
+#include <netinet/in.h>
+#include <net/route.h>
+
 #include <linux/if_tun.h>
 #include <linux/ipv6.h>
-#include <sys/ioctl.h>
 
 #define IFNAMSIZ_NULL (IFNAMSIZ - 1)
 
@@ -39,7 +45,7 @@ bool tun_set_ip(int sockfd, const char *ifname, in_addr_t ip, in_addr_t gateway)
     struct ifreq ifr = {0};
     strncpy(ifr.ifr_name, ifname, IFNAMSIZ_NULL);
 
-    struct sockaddr_in *addr = (struct sockaddr_in *) &ifr.ifr_addr;
+    struct sockaddr_in *addr = (struct sockaddr_in *)&ifr.ifr_addr;
     addr->sin_family = AF_INET;
 
     addr->sin_addr.s_addr = ip;
@@ -62,7 +68,7 @@ bool tun_set_dest_ip(int sockfd, const char *ifname, in_addr_t ip)
     struct ifreq ifr = {0};
     strncpy(ifr.ifr_name, ifname, IFNAMSIZ_NULL);
 
-    struct sockaddr_in *addr = (struct sockaddr_in *) &ifr.ifr_dstaddr;
+    struct sockaddr_in *addr = (struct sockaddr_in *)&ifr.ifr_dstaddr;
     addr->sin_family = AF_INET;
     addr->sin_addr.s_addr = ip;
 

@@ -1,4 +1,8 @@
 #include "addr.h"
+
+#include <stdbool.h>
+#include <netinet/in.h>
+
 #include "roku.h"
 
 static uint32_t crc32(const void *data, int length)

@@ -1,5 +1,5 @@
-#ifndef XLAT_H
-#define XLAT_H
+#ifndef ROKU_XLAT_H
+#define ROKU_XLAT_H
 
 #include <stdbool.h>
 #include <netinet/ip.h>

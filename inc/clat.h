@@ -1,5 +1,5 @@
-#ifndef CLAT_H
-#define CLAT_H
+#ifndef ROKU_CLAT_H
+#define ROKU_CLAT_H
 
 #include <netinet/in.h>
 

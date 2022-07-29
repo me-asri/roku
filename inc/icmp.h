@@ -1,5 +1,5 @@
-#ifndef ICMP_H
-#define ICMP_H
+#ifndef ROKU_ICMP_H
+#define ROKU_ICMP_H
 
 #include <netinet/in.h>
 #include <netinet/ip.h>

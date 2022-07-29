@@ -2,12 +2,17 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
-#include <unistd.h>
+
 #include <getopt.h>
+#include <unistd.h>
 #include <signal.h>
+
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
+#include <net/route.h>
 
 #include "log.h"
 #include "tun.h"
@@ -30,6 +35,7 @@ static const char GUIDE_TEXT[] =
     "  -m mtu    : MTU [" STR(DEFAULT_MTU) "]\n"
     "  -r        : Add default route\n"
     "  -h        : Display this message";
+
 static const char BADIP_FMT_TEXT[] = "'%s' is not a valid IPv4 address.";
 static const char BADPREFIX_FMT_TEXT[] = "'%s' is not a valid IPv6 /96 prefix.";
 

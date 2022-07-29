@@ -1,5 +1,5 @@
-#ifndef TUN_H
-#define TUN_H
+#ifndef ROKU_TUN_H
+#define ROKU_TUN_H
 
 #include <stdbool.h>
 #include <netinet/in.h>

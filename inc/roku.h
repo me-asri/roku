@@ -1,5 +1,5 @@
-#ifndef ISEKAI_H
-#define ISEKAI_H
+#ifndef ROKU_H
+#define ROKU_H
 
 #include <stdbool.h>
 #include <netinet/in.h>

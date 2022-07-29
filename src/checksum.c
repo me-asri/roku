@@ -1,5 +1,9 @@
 #include "checksum.h"
 
+#include <stdint.h>
+
+#include <netinet/ip.h>
+#include <netinet/ip6.h>
 #include <netinet/in.h>
 
 static uint32_t checksum_add(uint32_t current, const void *data, int length)

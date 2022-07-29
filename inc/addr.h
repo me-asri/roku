@@ -1,5 +1,5 @@
-#ifndef ADDR_H
-#define ADDR_H
+#ifndef ROKU_ADDR_H
+#define ROKU_ADDR_H
 
 #include <stdbool.h>
 #include <netinet/in.h>
