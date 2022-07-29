@@ -19,6 +19,10 @@ DEPS   := $(wildcard $(INCDIR)/*.$(DEPEXT) $(INCDIR)/**/*.$(DEPEXT))
 OBJS   := $(patsubst $(SRCDIR)/%, $(OBJDIR)/%, $(SRCS:.$(SRCEXT)=.$(OBJEXT)))
 BIN    := $(BINDIR)/$(TARGET)
 
+ifeq ($(PREFIX),)
+	PREFIX := /usr/local
+endif
+
 .PHONY: all clean
 
 all: $(BIN)
@@ -36,3 +40,7 @@ $(OBJDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT) $(DEPS)
 
 clean:
 	$(RM) -r $(BINDIR) $(OBJDIR)
+
+install: $(BIN)
+	install -d $(DESTDIR)$(PREFIX)/bin/
+	install -m 755 $(BIN) $(DESTDIR)$(PREFIX)/bin/
