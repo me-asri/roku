@@ -1,57 +1,37 @@
+#define _GNU_SOURCE
+
 #include "checksum.h"
 
 #include <stdint.h>
 
+#include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
-#include <netinet/in.h>
 
-static uint32_t checksum_add(uint32_t current, const void *data, int length)
+static void ip_checksum_update(uint32_t* sum, const void* data, size_t len, uint8_t* leftover);
+static uint16_t ip_checksum_finish(uint32_t sum, uint8_t leftover);
+
+uint16_t ip_checksum(const void* data, int length)
 {
-    uint32_t sum = current;
-    const uint16_t *cast = (uint16_t *)data;
+    uint32_t sum = 0;
+    uint8_t leftover = 0;
 
-    while (length > 1)
-    {
-        sum += *cast;
-        cast++;
-        length -= 2;
-    }
-
-    if (length)
-    {
-        sum += *(uint8_t *)cast;
-    }
-
-    return sum;
+    ip_checksum_update(&sum, data, length, &leftover);
+    return ip_checksum_finish(sum, leftover);
 }
 
-static uint16_t checksum_finish(uint32_t sum)
+uint16_t ip_checksum_4to6(uint16_t chksum, const struct iphdr* iphdr, const struct ip6_hdr* ip6hdr)
 {
-    while (sum > 0xffff)
-    {
-        sum = (sum >> 16) + (sum & 0xffff);
-    }
+    uint32_t sum;
+    int i;
 
-    return ~sum;
-}
+    sum = ntohs(~chksum);
+    sum += ntohs(~iphdr->saddr >> 16) + ntohs(~iphdr->saddr & 0xffff);
+    sum += ntohs(~iphdr->daddr >> 16) + ntohs(~iphdr->daddr & 0xffff);
 
-uint16_t checksum(const void *data, int length)
-{
-    return checksum_finish(checksum_add(0, data, length));
-}
-
-uint16_t checksum_4to6(uint16_t chksum, struct iphdr *ip_header, struct ip6_hdr *ip6_header)
-{
-    uint32_t sum = ntohs(~chksum);
-
-    sum += ntohs(~ip_header->saddr >> 16) + ntohs(~ip_header->saddr & 0xffff);
-    sum += ntohs(~ip_header->daddr >> 16) + ntohs(~ip_header->daddr & 0xffff);
-
-    for (int i = 0; i < 8; i++)
-    {
-        sum += ntohs(ip6_header->ip6_src.s6_addr16[i]);
-        sum += ntohs(ip6_header->ip6_dst.s6_addr16[i]);
+    for (i = 0; i < 8; i++) {
+        sum += ntohs(ip6hdr->ip6_src.s6_addr16[i]);
+        sum += ntohs(ip6hdr->ip6_dst.s6_addr16[i]);
     }
 
     sum = (sum >> 16) + (sum & 0xffff);
@@ -59,41 +39,86 @@ uint16_t checksum_4to6(uint16_t chksum, struct iphdr *ip_header, struct ip6_hdr 
     return ~htons(sum);
 }
 
-uint16_t checksum_6to4(uint16_t chksum, struct iphdr *ip_header, struct ip6_hdr *ip6_header)
+uint16_t ip_checksum_6to4(uint16_t chksum, const struct iphdr* iphdr, const struct ip6_hdr* ip6hdr)
 {
-    uint32_t sum = ntohs(~chksum);
+    uint32_t sum;
+    int i;
 
-    for (int i = 0; i < 8; i++)
-    {
-        sum += ntohs(~ip6_header->ip6_src.s6_addr16[i]);
-        sum += ntohs(~ip6_header->ip6_dst.s6_addr16[i]);
+    sum = ntohs(~chksum);
+    for (i = 0; i < 8; i++) {
+        sum += ntohs(~ip6hdr->ip6_src.s6_addr16[i]);
+        sum += ntohs(~ip6hdr->ip6_dst.s6_addr16[i]);
     }
 
-    sum += ntohs(ip_header->saddr >> 16) + ntohs(ip_header->saddr & 0xffff);
-    sum += ntohs(ip_header->daddr >> 16) + ntohs(ip_header->daddr & 0xffff);
+    sum += ntohs(iphdr->saddr >> 16) + ntohs(iphdr->saddr & 0xffff);
+    sum += ntohs(iphdr->daddr >> 16) + ntohs(iphdr->daddr & 0xffff);
 
     sum = (sum >> 16) + (sum & 0xffff);
     sum += (sum >> 16);
     return ~htons(sum);
 }
 
-uint16_t checksum_sum(uint16_t a, uint16_t b)
+uint16_t ip_checksum_add(uint16_t a, uint16_t b)
 {
     uint32_t sum = (uint16_t)~a + (uint16_t)~b;
     return ~((sum >> 16) + (sum & 0xffff));
 }
 
-uint16_t checksum_pseudo6(struct ip6_hdr *ip6_header, uint32_t payload_length, uint8_t protocol)
+uint16_t ip6_ph_checksum(const struct ip6_hdr* ip6hdr, uint16_t payload_len, uint8_t proto)
 {
     uint32_t sum = 0;
+    uint8_t leftover = 0;
 
-    uint32_t length = htonl(payload_length);
-    uint32_t next = htonl(protocol);
+    uint32_t plen = htonl(payload_len);
+    uint32_t nexthdr = htonl(proto);
 
-    sum = checksum_add(sum, &ip6_header->ip6_src, sizeof(struct in6_addr));
-    sum = checksum_add(sum, &ip6_header->ip6_dst, sizeof(struct in6_addr));
-    sum = checksum_add(sum, &length, sizeof(length));
-    sum = checksum_add(sum, &next, sizeof(next));
+    ip_checksum_update(&sum, &ip6hdr->ip6_src, sizeof(ip6hdr->ip6_src), &leftover);
+    ip_checksum_update(&sum, &ip6hdr->ip6_dst, sizeof(ip6hdr->ip6_dst), &leftover);
+    ip_checksum_update(&sum, &plen, sizeof(plen), &leftover);
+    ip_checksum_update(&sum, &nexthdr, sizeof(nexthdr), &leftover);
+    return ip_checksum_finish(sum, leftover);
+}
 
-    return checksum_finish(sum);
+void ip_checksum_update(uint32_t* sum, const void* data, size_t len, uint8_t* leftover)
+{
+    const uint8_t* ptr = data;
+
+    uint16_t word;
+    uint16_t* word_ptr;
+    size_t word_len;
+
+    if (len == 0) {
+        return;
+    }
+
+    if (*leftover) {
+        word = (ptr[0] << 8) | *leftover;
+        *sum += word;
+
+        ptr++;
+        len--;
+
+        *leftover = 0;
+    }
+
+    word_len = len / 2;
+    word_ptr = (uint16_t*)ptr;
+    while (word_len > 0) {
+        *sum += *word_ptr++;
+        word_len--;
+    }
+
+    if (len % 2) {
+        *leftover = *(const uint8_t*)word_ptr;
+    }
+}
+
+uint16_t ip_checksum_finish(uint32_t sum, uint8_t leftover)
+{
+    sum += leftover;
+
+    while (sum >> 16) {
+        sum = (sum & 0xffff) + (sum >> 16);
+    }
+    return (uint16_t)(~sum);
 }

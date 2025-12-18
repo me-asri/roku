@@ -1,23 +1,18 @@
-#ifndef ROKU_ICMP_H
-#define ROKU_ICMP_H
+#pragma once
+
+#include <stddef.h>
+
+#include <sys/types.h>
 
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
-#include <netinet/ip_icmp.h>
-#include <netinet/icmp6.h>
 
-// Maximum ICMP error data length so total packet size doesn't exceed 576 (Min IPv4 MTU)
-#define ICMP_ERROR_LENGTH_MAX 548
-// Maximum ICMPv6 error data length so total packet size doesn't exceed 1280 (Min IPv6 MTU)
-#define ICMP6_ERROR_LENGTH_MAX 1232
-
-// Additional PARAMPROB codes
+/* Additional PARAMPROB codes */
 #define ICMP_PARAMPROB_PTRERR 0
 #define ICMP_PARAMPROB_BADLEN 2
 
-enum
-{
+enum {
     IP_POINTER_VER = 0,
     IP_POINTER_TOS = 1,
     IP_POINTER_TLEN_A = 2,
@@ -36,8 +31,7 @@ enum
     IP_POINTER_DST_B = 19
 };
 
-enum
-{
+enum {
     IP6_POINTER_VER = 0,
     IP6_POINTER_FLOW = 1,
     IP6_POINTER_PLEN = 4,
@@ -47,9 +41,17 @@ enum
     IP6_POINTER_DST = 24
 };
 
-int icmp_send_error(int type, int code, in_addr_t src, in_addr_t dst, char *payload, int payload_length, int data);
-int icmp6_send_error(int type, int code, struct in6_addr *src, struct in6_addr *dst, char *payload, int payload_length, int data);
-int icmp_4to6(struct iphdr *ip_header, char *payload, int payload_length);
-int icmp_6to4(struct ip6_hdr *ip6_header, char *payload, int payload_length);
-
-#endif
+/* Send an ICMP error */
+ssize_t icmp_send_error(int tunfd, int type, int code, in_addr_t src, in_addr_t dst,
+    char* payload, size_t payload_len, int data);
+/* Send an ICMPv6 error */
+ssize_t icmp6_send_error(int tunfd, int type, int code, struct in6_addr* src, struct in6_addr* dst,
+    char* payload, size_t payload_len, int data);
+/* Translate ICMPv4 packet to ICMPv6 */
+ssize_t icmp_write_4to6(int tunfd, int tun_mtu, const struct iphdr* iphdr,
+    char* payload, size_t payload_len,
+    struct in6_addr* src_prefix, struct in6_addr* dst_prefix);
+/* Translate ICMPv6 packet to ICMPv4*/
+ssize_t icmp_write_6to4(int tunfd, int tun_mtu, const struct ip6_hdr* ip6hdr,
+    char* payload, size_t payload_len,
+    const struct in6_addr* src_prefix, const struct in6_addr* dst_prefix);
