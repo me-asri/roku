@@ -20,13 +20,13 @@
 
 #define NFT_DEL_CMD_SIZE 42 /* delete table... + IF_NAMESIZE */
 
-static const char NFT_CMD_ADD_TEMPLATE[] = "create table inet " ROKU_NAT_TABLE_PREFIX "%1$s;"
-                                           "add chain inet " ROKU_NAT_TABLE_PREFIX "%1$s postrouting { type nat hook postrouting priority srcnat " PRIORITY_DELTA "; policy accept; };"
-                                           "add rule inet " ROKU_NAT_TABLE_PREFIX "%1$s postrouting ip6 saddr %2$s/96 oifname != \"%1$s\" counter masquerade;"
-                                           "add chain inet " ROKU_NAT_TABLE_PREFIX "%1$s forward { type filter hook forward priority filter " PRIORITY_DELTA "; policy accept; };"
-                                           "add rule inet " ROKU_NAT_TABLE_PREFIX "%1$s forward iifname %1$s counter accept;";
+static const char NFT_CMD_ADD_TEMPLATE[] = "create table ip6 " ROKU_NAT_TABLE_PREFIX "%1$s;"
+                                           "add chain ip6 " ROKU_NAT_TABLE_PREFIX "%1$s postrouting { type nat hook postrouting priority srcnat " PRIORITY_DELTA "; policy accept; };"
+                                           "add rule ip6 " ROKU_NAT_TABLE_PREFIX "%1$s postrouting ip6 saddr %2$s/96 oifname != \"%1$s\" counter masquerade;"
+                                           "add chain ip6 " ROKU_NAT_TABLE_PREFIX "%1$s forward { type filter hook forward priority filter " PRIORITY_DELTA "; policy accept; };"
+                                           "add rule ip6 " ROKU_NAT_TABLE_PREFIX "%1$s forward iifname %1$s counter accept;";
 
-static const char NFT_DEL_CMD[] = "delete table inet " ROKU_NAT_TABLE_PREFIX "%s";
+static const char NFT_DEL_CMD[] = "delete table ip6 " ROKU_NAT_TABLE_PREFIX "%s";
 
 int firewall_add_rules(const struct in6_addr* src_prefix, const char* iface)
 {
